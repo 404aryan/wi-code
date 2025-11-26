@@ -862,63 +862,87 @@ const ParentCommunity = () => {
   );
 };
 
-const AIChatbot = () => {
-  const [messages, setMessages] = useState([
-    { type: 'bot', text: 'Hello! I\'m your AI Companion. I\'m here to provide personalized guidance and support. How can I assist you today?' }
-  ]);
-  const [input, setInput] = useState('');
-  
-  const sendMessage = () => {
-    if (!input.trim()) return;
-    setMessages([...messages, 
-      { type: 'user', text: input },
-      { type: 'bot', text: 'Great question! Based on your child\'s progress, I recommend the Emotion Detective game for social skills development. Would you like me to schedule it?' }
-    ]);
-    setInput('');
-  };
-  
+  const AIChatbot = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    // If the Botpress script is already loaded, just (re)init the embedded chat
+    if (window.botpressWebchat) {
+      window.botpressWebchat.init({
+        botId: "5a9ab3ec-b9a1-4fb6-a34f-05b7648b7101",
+        clientId: "124b12c2-53ef-4974-9e97-2d445c8184a3",
+        hostUrl: "https://cdn.botpress.cloud/webchat/v3.3",
+        messagingUrl: "https://messaging.botpress.cloud",
+        lazy: true,
+        hideWidget: true,
+        layout: "embedded",
+        containerWidth: "100%",
+        stylesheet: "https://cdn.botpress.cloud/webchat/v3.3/themes/default.css",
+        selector: "#ai-chat-container",
+      });
+      setIsLoaded(true);
+      return;
+    }
+
+    // Otherwise, load the Botpress script once
+    const script = document.createElement("script");
+    script.src = "https://cdn.botpress.cloud/webchat/v3.3/inject.js";
+    script.async = true;
+
+    script.onload = () => {
+      if (!window.botpressWebchat) return;
+
+      window.botpressWebchat.init({
+        botId: "5a9ab3ec-b9a1-4fb6-a34f-05b7648b7101",
+        clientId: "124b12c2-53ef-4974-9e97-2d445c8184a3",
+        hostUrl: "https://cdn.botpress.cloud/webchat/v3.3",
+        messagingUrl: "https://messaging.botpress.cloud",
+        lazy: true,
+        hideWidget: true,
+        layout: "embedded",
+        containerWidth: "100%",
+        stylesheet: "https://cdn.botpress.cloud/webchat/v3.3/themes/default.css",
+        selector: "#ai-chat-container",
+      });
+
+      setIsLoaded(true);
+    };
+
+    document.body.appendChild(script);
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-gray-900">AI Companion</h2>
-        <p className="text-gray-600 mt-1">24/7 intelligent guidance and support</p>
+        <p className="text-gray-600 mt-1">
+          24/7 intelligent guidance and personalized support
+        </p>
       </div>
-      
-      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-3xl p-6 h-96 overflow-y-auto shadow-xl border border-cyan-100">
-        <div className="space-y-4">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-md rounded-2xl p-4 shadow-md ${
-                msg.type === 'user' 
-                  ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white' 
-                  : 'bg-white text-gray-800 border border-gray-200'
-              }`}>
-                {msg.text}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      <div className="flex gap-3">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-          placeholder="Ask me anything..."
-          className="flex-1 rounded-2xl border-2 border-gray-200 px-6 py-4 focus:outline-none focus:border-cyan-400 shadow-sm"
-        />
-        <button
-          onClick={sendMessage}
-          className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-2xl px-8 font-semibold hover:shadow-xl transition-all hover:scale-105"
-        >
-          Send
-        </button>
-      </div>
+
+      {/* Embedded Botpress webchat */}
+      <div
+        id="ai-chat-container"
+        style={{
+          width: "100%",
+          height: "600px",
+          background: "white",
+          borderRadius: "24px",
+          overflow: "hidden",
+          boxShadow: "0 10px 30px rgba(15,23,42,0.15)",
+          border: "1px solid rgba(148,163,184,0.4)",
+        }}
+      />
+
+      {!isLoaded && (
+        <p className="text-sm text-gray-500">Loading AI Companion…</p>
+      )}
     </div>
   );
 };
+
+
+
 
 const VideoConsultation = () => {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
