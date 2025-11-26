@@ -1,4 +1,38 @@
-# Getting Started with Create React App
+# BrightPath Therapy - AI-Powered Platform
+
+An advanced AI-powered therapy platform for children with autism and motor challenges. This platform combines real-time motion tracking, voice interaction, and intelligent coaching to provide personalized therapy sessions.
+
+## 🚀 Key Features
+
+### 🎥 AI Video Coach
+- **Real-Time Motion Detection**: Uses MediaPipe Pose for live body pose estimation and tracking
+- **Voice Interaction**: Built-in speech recognition and text-to-speech for natural conversation
+- **Intelligent Task System**: Dynamic difficulty adjustment based on patient progress
+- **Live Feedback**: Instant corrections and encouragement during exercises
+- **Privacy Protected**: All processing happens locally in the browser
+
+### 📊 Progress Tracking
+- Visual performance reports with charts and graphs
+- Session history and analytics
+- Export progress data for caregivers/therapists
+- Local storage for data privacy
+
+### 🎮 Learning Activities
+- Memory Match games
+- Emotion Detective
+- Word Builder
+- Catch the Stars
+- Daily Routine planner
+- Social Stories
+
+### 🛡️ Technology Stack
+- **Frontend**: React 19 with TailwindCSS
+- **Computer Vision**: MediaPipe Pose estimation
+- **Charts**: Chart.js for visualizations
+- **Voice**: Web Speech API
+- **Storage**: LocalStorage for privacy-first approach
+
+## 🏃 Getting Started
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 

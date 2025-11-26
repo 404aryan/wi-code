@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Heart, Gamepad2, Users, MessageCircle, Brain, BookOpen, TrendingUp, Phone, Star, Award, Sparkles, Home, User, Menu, X, Play, CheckCircle, ArrowRight, Zap, Shield, Clock, Target } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Heart, Gamepad2, Users, MessageCircle, Brain, BookOpen, TrendingUp, Phone, Star, Award, Sparkles, Home, User, Menu, X, Play, CheckCircle, ArrowRight, Zap, Shield, Clock, Target, LogOut } from 'lucide-react';
+import AIVideoCoach from './components/AIVideoCoach';
+import Auth from './components/Auth';
 
 // ============================================
 // FEATURE REGISTRY SYSTEM
@@ -152,8 +154,71 @@ FeatureRegistry.register({
 const MemoryMatchGame = () => {
   const [score, setScore] = useState(0);
   const [flipped, setFlipped] = useState([]);
+  const [matched, setMatched] = useState([]);
+  const [time, setTime] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [cards, setCards] = useState([]);
+  const [level, setLevel] = useState(1);
   
-  const cards = ['🎨', '🎭', '🎪', '🎬', '🎯', '🎲', '🎸', '🎹'];
+  const emojis = ['🎨', '🎭', '🎪', '🎬', '🎯', '🎲', '🎸', '🎹'];
+  
+  const startNewGame = () => {
+    // Create pairs of cards
+    const pairs = [...emojis.slice(0, 4 + level), ...emojis.slice(0, 4 + level)];
+    // Shuffle
+    const shuffled = pairs.sort(() => Math.random() - 0.5);
+    setCards(shuffled);
+    setFlipped([]);
+    setMatched([]);
+    setScore(0);
+    setTime(0);
+    setGameStarted(true);
+  };
+  
+  const handleCardClick = (index) => {
+    if (flipped.length === 2 || matched.includes(index) || flipped.includes(index)) return;
+    
+    const newFlipped = [...flipped, index];
+    setFlipped(newFlipped);
+    
+    if (newFlipped.length === 2) {
+      const [first, second] = newFlipped;
+      if (cards[first] === cards[second]) {
+        // Match found!
+        setMatched([...matched, first, second]);
+        setScore(score + 20);
+        setFlipped([]);
+        
+        // Check if all matched
+        if (matched.length + 2 === cards.length) {
+          setScore(score + 50);
+        }
+      } else {
+        // No match
+        setTimeout(() => setFlipped([]), 1000);
+      }
+    }
+  };
+  
+  React.useEffect(() => {
+    if (gameStarted && matched.length < cards.length) {
+      const timer = setInterval(() => setTime(t => t + 1), 1000);
+      return () => clearInterval(timer);
+    } else if (matched.length === cards.length && cards.length > 0) {
+      // Level complete
+      setTimeout(() => {
+        setLevel(level + 1);
+        alert(`Great! Level ${level} complete! Starting level ${level + 1}...`);
+        startNewGame();
+      }, 2000);
+    }
+  }, [gameStarted, time, matched.length]);
+  
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
   
   return (
     <div className="space-y-6">
@@ -168,51 +233,82 @@ const MemoryMatchGame = () => {
         </div>
       </div>
       
+      {!gameStarted ? (
+        <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-3xl p-12 text-center shadow-xl border border-violet-100">
+          <div className="text-6xl mb-6">🧠</div>
+          <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to Play?</h3>
+          <p className="text-xl text-gray-600 mb-8">Match the pairs to win! Flip cards to reveal them.</p>
+          <button 
+            onClick={startNewGame}
+            className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-12 py-5 rounded-2xl text-xl font-bold hover:shadow-2xl transition-all hover:scale-110 inline-flex items-center gap-3"
+          >
+            <Play className="w-6 h-6" />
+            Start Game
+          </button>
+        </div>
+      ) : (
+        <>
       <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-3xl p-8 shadow-xl border border-violet-100">
         <div className="grid grid-cols-4 gap-4">
-          {cards.map((card, i) => (
+              {cards.map((card, i) => {
+                const isFlipped = flipped.includes(i);
+                const isMatched = matched.includes(i);
+                
+                return (
             <button
               key={i}
-              onClick={() => setScore(score + 10)}
-              className="aspect-square bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 flex items-center justify-center text-5xl transform hover:-translate-y-1"
-            >
-              {card}
+                    onClick={() => handleCardClick(i)}
+                    disabled={isMatched || isFlipped}
+                    className={`aspect-square bg-white rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 flex items-center justify-center text-5xl transform ${
+                      isMatched ? 'bg-green-100 border-2 border-green-500' : ''
+                    } ${isFlipped ? 'scale-95' : 'hover:shadow-2xl hover:-translate-y-1'}`}
+                  >
+                    {isFlipped || isMatched ? card : '❓'}
             </button>
-          ))}
+                );
+              })}
         </div>
       </div>
       
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-4 shadow-md text-center border border-gray-100">
-          <div className="text-2xl font-bold text-violet-600">8/16</div>
+              <div className="text-2xl font-bold text-violet-600">{matched.length / 2}/{(cards.length) / 2}</div>
           <div className="text-sm text-gray-600">Matches Found</div>
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-md text-center border border-gray-100">
-          <div className="text-2xl font-bold text-purple-600">2:45</div>
+              <div className="text-2xl font-bold text-purple-600">{formatTime(time)}</div>
           <div className="text-sm text-gray-600">Time Elapsed</div>
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-md text-center border border-gray-100">
-          <div className="text-2xl font-bold text-pink-600">Level 3</div>
+              <div className="text-2xl font-bold text-pink-600">Level {level}</div>
           <div className="text-sm text-gray-600">Current Level</div>
         </div>
       </div>
       
       <div className="flex gap-4">
-        <button className="flex-1 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl py-4 font-semibold hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-2">
+            <button 
+              onClick={startNewGame}
+              className="flex-1 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl py-4 font-semibold hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
+            >
           <Play className="w-5 h-5" />
           New Game
         </button>
-        <button className="flex-1 bg-white border-2 border-violet-500 text-violet-600 rounded-2xl py-4 font-semibold hover:bg-violet-50 transition-all flex items-center justify-center gap-2">
+            <button 
+              onClick={() => setLevel(level === 1 ? 2 : 1)}
+              className="flex-1 bg-white border-2 border-violet-500 text-violet-600 rounded-2xl py-4 font-semibold hover:bg-violet-50 transition-all flex items-center justify-center gap-2"
+            >
           <Target className="w-5 h-5" />
-          Settings
+              Change Level
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 };
 
 const EmotionGame = () => {
-  const emotions = [
+  const allEmotions = [
     { emoji: '😊', name: 'Happy', color: 'from-yellow-400 to-orange-400' },
     { emoji: '😢', name: 'Sad', color: 'from-blue-400 to-cyan-400' },
     { emoji: '😠', name: 'Angry', color: 'from-red-400 to-pink-400' },
@@ -220,6 +316,54 @@ const EmotionGame = () => {
     { emoji: '😮', name: 'Surprised', color: 'from-green-400 to-teal-400' },
     { emoji: '😌', name: 'Calm', color: 'from-cyan-400 to-blue-400' },
   ];
+  
+  const [currentEmotion, setCurrentEmotion] = useState(null);
+  const [score, setScore] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  
+  const startGame = () => {
+    setGameStarted(true);
+    generateNewQuestion();
+  };
+  
+  const generateNewQuestion = () => {
+    const random = allEmotions[Math.floor(Math.random() * allEmotions.length)];
+    setCurrentEmotion(random);
+  };
+  
+  const handleAnswer = (selected) => {
+    const correct = selected.name === currentEmotion.name;
+    setTotal(total + 1);
+    
+    if (correct) {
+      setScore(score + 1);
+      alert('✅ Correct! Well done!');
+    } else {
+      alert(`❌ Try again! The correct answer is ${currentEmotion.name}.`);
+    }
+    
+    setTimeout(() => generateNewQuestion(), 1000);
+  };
+  
+  if (!gameStarted) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-3xl p-12 text-center shadow-xl border border-rose-100">
+          <div className="text-6xl mb-6">🎭</div>
+          <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to Play Emotion Detective?</h3>
+          <p className="text-xl text-gray-600 mb-8">Identify emotions from emojis. Are you up for the challenge?</p>
+          <button 
+            onClick={startGame}
+            className="bg-gradient-to-r from-rose-500 to-pink-600 text-white px-12 py-5 rounded-2xl text-xl font-bold hover:shadow-2xl transition-all hover:scale-110 inline-flex items-center gap-3"
+          >
+            <Play className="w-6 h-6" />
+            Start Game
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
@@ -230,15 +374,16 @@ const EmotionGame = () => {
       
       <div className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-3xl p-12 shadow-xl border border-rose-100">
         <div className="text-center mb-8">
-          <div className="text-9xl mb-6 animate-bounce">😊</div>
+          <div className="text-9xl mb-6 animate-bounce">{currentEmotion?.emoji}</div>
           <p className="text-3xl font-bold text-gray-900 mb-2">How is this person feeling?</p>
           <p className="text-gray-600">Choose the correct emotion</p>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {emotions.map((emotion, i) => (
+          {allEmotions.map((emotion, i) => (
             <button
               key={i}
+              onClick={() => handleAnswer(emotion)}
               className="bg-white rounded-2xl p-6 hover:shadow-2xl transition-all hover:scale-105 transform hover:-translate-y-1 border border-gray-100"
             >
               <div className="text-5xl mb-3">{emotion.emoji}</div>
@@ -252,50 +397,172 @@ const EmotionGame = () => {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm text-gray-600">Progress</div>
-            <div className="text-2xl font-bold text-rose-600">12/20 Correct</div>
+            <div className="text-2xl font-bold text-rose-600">{score}/{total} Correct</div>
           </div>
           <div className="flex gap-2">
             {[...Array(5)].map((_, i) => (
-              <Star key={i} className={`w-8 h-8 ${i < 3 ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+              <Star key={i} className={`w-8 h-8 ${i < Math.floor((score/total) * 5) && total > 0 ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
             ))}
           </div>
         </div>
+      </div>
+      
+      <div className="flex gap-4">
+        <button 
+          onClick={startGame}
+          className="flex-1 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl py-4 font-semibold hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
+        >
+          <Play className="w-5 h-5" />
+          New Game
+        </button>
       </div>
     </div>
   );
 };
 
 const WordBuilderGame = () => {
+  const words = [
+    { word: 'APPLE', emoji: '🍎', letters: ['A', 'P', 'P', 'L', 'E'] },
+    { word: 'BOOK', emoji: '📚', letters: ['B', 'O', 'O', 'K'] },
+    { word: 'CAT', emoji: '🐱', letters: ['C', 'A', 'T'] },
+    { word: 'DOG', emoji: '🐶', letters: ['D', 'O', 'G'] },
+    { word: 'STAR', emoji: '⭐', letters: ['S', 'T', 'A', 'R'] },
+  ];
+  
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [selectedLetters, setSelectedLetters] = useState([]);
+  const [score, setScore] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  
+  const currentWord = words[currentWordIndex];
+  const allLetters = Array.from(new Set(words.flatMap(w => w.letters))).sort();
+  
+  const startGame = () => {
+    setGameStarted(true);
+    setCurrentWordIndex(0);
+    setSelectedLetters([]);
+    setScore(0);
+  };
+  
+  const handleLetterClick = (letter) => {
+    if (selectedLetters.length >= currentWord.letters.length) return;
+    
+    setSelectedLetters([...selectedLetters, letter]);
+    
+    if (selectedLetters.length + 1 === currentWord.letters.length) {
+      checkWord();
+    }
+  };
+  
+  const checkWord = () => {
+    const selected = [...selectedLetters, selectedLetters[selectedLetters.length]];
+    const correct = selected.slice(0, currentWord.letters.length).every((l, i) => l === currentWord.letters[i]);
+    
+    setTimeout(() => {
+      if (correct) {
+        setScore(score + 10);
+        alert('✅ Correct! Well done!');
+        
+        if (currentWordIndex < words.length - 1) {
+          setCurrentWordIndex(currentWordIndex + 1);
+          setSelectedLetters([]);
+        } else {
+          alert('🎉 All words complete! Great job!');
+          setGameStarted(false);
+        }
+      } else {
+        alert('❌ Try again!');
+        setSelectedLetters([]);
+      }
+    }, 300);
+  };
+  
+  const clearSelection = () => {
+    setSelectedLetters([]);
+  };
+  
+  if (!gameStarted) {
   return (
     <div className="space-y-6">
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-12 text-center shadow-xl border border-blue-100">
+          <div className="text-6xl mb-6">📝</div>
+          <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to Build Words?</h3>
+          <p className="text-xl text-gray-600 mb-8">Spell words correctly using the letters provided!</p>
+          <button 
+            onClick={startGame}
+            className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-12 py-5 rounded-2xl text-xl font-bold hover:shadow-2xl transition-all hover:scale-110 inline-flex items-center gap-3"
+          >
+            <Play className="w-6 h-6" />
+            Start Game
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
       <div>
         <h2 className="text-3xl font-bold text-gray-900">Word Builder</h2>
         <p className="text-gray-600 mt-1">Build vocabulary and speech skills</p>
+        </div>
+        <div className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white px-6 py-3 rounded-2xl shadow-lg">
+          <div className="text-sm font-medium opacity-90">Score</div>
+          <div className="text-3xl font-bold">{score}</div>
+        </div>
       </div>
       
       <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-8 shadow-xl border border-blue-100">
         <div className="text-center mb-8">
-          <div className="text-8xl mb-6">🍎</div>
+          <div className="text-8xl mb-6">{currentWord.emoji}</div>
           <div className="flex justify-center gap-3 mb-6">
-            {['A', 'P', 'P', 'L', 'E'].map((letter, i) => (
-              <div key={i} className="w-16 h-20 bg-white rounded-2xl flex items-center justify-center text-3xl font-bold shadow-lg border border-blue-200">
-                {letter}
+            {currentWord.letters.map((letter, i) => (
+              <div key={i} className={`w-16 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold shadow-lg border-2 ${
+                selectedLetters[i] 
+                  ? selectedLetters[i] === letter 
+                    ? 'bg-green-100 border-green-500 text-green-700' 
+                    : 'bg-red-100 border-red-500 text-red-700'
+                  : 'bg-white border-blue-200'
+              }`}>
+                {selectedLetters[i] || ''}
               </div>
             ))}
           </div>
           <p className="text-xl text-gray-700 font-medium">Spell the word!</p>
+          <p className="text-sm text-gray-500 mt-2">Word {currentWordIndex + 1} of {words.length}</p>
         </div>
         
+        <div className="space-y-4">
         <div className="grid grid-cols-5 gap-3">
-          {['A', 'B', 'C', 'D', 'E', 'L', 'P', 'Q', 'R', 'S'].map((letter, i) => (
+            {allLetters.map((letter, i) => (
             <button
               key={i}
-              className="aspect-square bg-white rounded-xl flex items-center justify-center text-2xl font-bold hover:shadow-xl transition-all hover:scale-110 border border-gray-200 hover:border-blue-400"
+                onClick={() => handleLetterClick(letter)}
+                disabled={selectedLetters.length >= currentWord.letters.length}
+                className="aspect-square bg-white rounded-xl flex items-center justify-center text-2xl font-bold hover:shadow-xl transition-all hover:scale-110 border border-gray-200 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {letter}
             </button>
           ))}
         </div>
+          <button
+            onClick={clearSelection}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-xl font-semibold transition-all"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex gap-4">
+        <button 
+          onClick={startGame}
+          className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-2xl py-4 font-semibold hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
+        >
+          <Play className="w-5 h-5" />
+          New Game
+        </button>
       </div>
     </div>
   );
@@ -304,6 +571,66 @@ const WordBuilderGame = () => {
 const CatchTheStarsGame = () => {
   const [score, setScore] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [stars, setStars] = useState([]);
+  const [highScore, setHighScore] = useState(0);
+  
+  const startGame = () => {
+    setIsPlaying(true);
+    setScore(0);
+    setTimeLeft(30);
+    generateStars();
+    
+    // Timer countdown
+    const timer = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) {
+          clearInterval(timer);
+          setIsPlaying(false);
+          alert(`Time's up! Your score: ${score}`);
+          if (score > highScore) {
+            setHighScore(score);
+            alert('🎉 New high score!');
+          }
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+  };
+  
+  const generateStars = () => {
+    const interval = setInterval(() => {
+      if (!isPlaying) {
+        clearInterval(interval);
+        return;
+      }
+      const newStar = {
+        id: Date.now() + Math.random(),
+        x: Math.random() * 80,
+        y: Math.random() * 80,
+        speed: Math.random() * 0.02 + 0.01
+      };
+      setStars(prev => [...prev, newStar]);
+    }, 1000);
+  };
+  
+  const catchStar = (id) => {
+    setScore(score + 10);
+    setStars(prev => prev.filter(s => s.id !== id));
+  };
+  
+  React.useEffect(() => {
+    if (isPlaying && timeLeft > 0) {
+      const moveStars = setInterval(() => {
+        setStars(prev => prev.map(star => ({
+          ...star,
+          y: (star.y + 50) % 100
+        })));
+      }, 100);
+      return () => clearInterval(moveStars);
+    }
+  }, [isPlaying, timeLeft]);
   
   return (
     <div className="space-y-6">
@@ -322,9 +649,10 @@ const CatchTheStarsGame = () => {
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-16 text-center shadow-xl border border-amber-100">
           <div className="text-9xl mb-8 animate-pulse">⭐</div>
           <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to Play?</h3>
-          <p className="text-xl text-gray-600 mb-8">Catch as many stars as you can in 30 seconds!</p>
+          <p className="text-xl text-gray-600 mb-4">Catch as many stars as you can in 30 seconds!</p>
+          <p className="text-lg text-amber-600 font-semibold mb-8">High Score: {highScore}</p>
           <button
-            onClick={() => setIsPlaying(true)}
+            onClick={startGame}
             className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-12 py-5 rounded-2xl text-xl font-bold hover:shadow-2xl transition-all hover:scale-110 inline-flex items-center gap-3"
           >
             <Play className="w-6 h-6" />
@@ -334,17 +662,16 @@ const CatchTheStarsGame = () => {
       ) : (
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-8 relative h-96 overflow-hidden shadow-xl border border-amber-100">
           <div className="absolute top-4 right-4 bg-white px-6 py-3 rounded-2xl shadow-lg">
-            <div className="text-3xl font-bold text-amber-600">⏱️ 24s</div>
+            <div className="text-3xl font-bold text-amber-600">⏱️ {timeLeft}s</div>
           </div>
-          {[...Array(6)].map((_, i) => (
+          {stars.map((star) => (
             <button
-              key={i}
-              onClick={() => setScore(score + 10)}
+              key={star.id}
+              onClick={() => catchStar(star.id)}
               className="absolute text-6xl animate-bounce cursor-pointer hover:scale-125 transition-transform"
               style={{ 
-                left: `${Math.random() * 80}%`, 
-                top: `${Math.random() * 80}%`,
-                animationDelay: `${i * 0.2}s`
+                left: `${star.x}%`, 
+                top: `${star.y}%`
               }}
             >
               ⭐
@@ -357,13 +684,35 @@ const CatchTheStarsGame = () => {
 };
 
 const DailyRoutine = () => {
-  const routines = [
-    { time: '8:00 AM', activity: 'Wake Up', icon: '🌅', done: true, color: 'from-orange-400 to-yellow-400' },
-    { time: '8:30 AM', activity: 'Breakfast', icon: '🍳', done: true, color: 'from-green-400 to-teal-400' },
-    { time: '9:00 AM', activity: 'Brush Teeth', icon: '🪥', done: false, color: 'from-blue-400 to-cyan-400' },
-    { time: '10:00 AM', activity: 'Play Time', icon: '🎮', done: false, color: 'from-purple-400 to-pink-400' },
-    { time: '12:00 PM', activity: 'Lunch', icon: '🍱', done: false, color: 'from-red-400 to-orange-400' },
-  ];
+  const [routines, setRoutines] = useState([
+    { id: 1, time: '8:00 AM', activity: 'Wake Up', icon: '🌅', done: false, color: 'from-orange-400 to-yellow-400' },
+    { id: 2, time: '8:30 AM', activity: 'Breakfast', icon: '🍳', done: false, color: 'from-green-400 to-teal-400' },
+    { id: 3, time: '9:00 AM', activity: 'Brush Teeth', icon: '🪥', done: false, color: 'from-blue-400 to-cyan-400' },
+    { id: 4, time: '10:00 AM', activity: 'Play Time', icon: '🎮', done: false, color: 'from-purple-400 to-pink-400' },
+    { id: 5, time: '12:00 PM', activity: 'Lunch', icon: '🍱', done: false, color: 'from-red-400 to-orange-400' },
+  ]);
+  
+  const toggleTask = (id) => {
+    setRoutines(routines.map(r => r.id === id ? { ...r, done: !r.done } : r));
+    
+    // Save to localStorage
+    localStorage.setItem('dailyRoutine', JSON.stringify(routines));
+  };
+  
+  const completedCount = routines.filter(r => r.done).length;
+  const completionRate = Math.round((completedCount / routines.length) * 100);
+  
+  // Load from localStorage on mount
+  React.useEffect(() => {
+    const saved = localStorage.getItem('dailyRoutine');
+    if (saved) {
+      setRoutines(JSON.parse(saved));
+    }
+  }, []);
+  
+  React.useEffect(() => {
+    localStorage.setItem('dailyRoutine', JSON.stringify(routines));
+  }, [routines]);
   
   return (
     <div className="space-y-6">
@@ -372,10 +721,24 @@ const DailyRoutine = () => {
         <p className="text-gray-600 mt-1">Stay on track with your schedule</p>
       </div>
       
+      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-6 shadow-xl border border-emerald-100">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-gray-900">Today's Progress</h3>
+          <div className="text-2xl font-bold text-emerald-600">{completionRate}%</div>
+        </div>
+        <div className="h-4 bg-white rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 transition-all duration-500"
+            style={{ width: `${completionRate}%` }}
+          />
+        </div>
+        <p className="text-sm text-gray-600 mt-2">{completedCount} of {routines.length} tasks completed</p>
+      </div>
+      
       <div className="space-y-4">
-        {routines.map((routine, i) => (
+        {routines.map((routine) => (
           <div
-            key={i}
+            key={routine.id}
             className={`bg-white rounded-2xl p-5 flex items-center gap-5 transition-all hover:shadow-xl border-2 ${
               routine.done ? 'border-green-200 bg-green-50' : 'border-gray-200'
             }`}
@@ -387,12 +750,27 @@ const DailyRoutine = () => {
               <div className="font-bold text-lg text-gray-900">{routine.activity}</div>
               <div className="text-gray-600">{routine.time}</div>
             </div>
-            <button className={`w-12 h-12 rounded-full ${routine.done ? 'bg-green-500' : 'bg-gray-300'} flex items-center justify-center text-white shadow-lg transition-all hover:scale-110`}>
+            <button 
+              onClick={() => toggleTask(routine.id)}
+              className={`w-12 h-12 rounded-full ${routine.done ? 'bg-green-500' : 'bg-gray-300'} flex items-center justify-center text-white shadow-lg transition-all hover:scale-110`}
+            >
               {routine.done && <CheckCircle className="w-6 h-6" />}
             </button>
           </div>
         ))}
       </div>
+      
+      {completionRate === 100 && (
+        <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-3xl p-6 border border-yellow-200">
+          <div className="flex items-center gap-4">
+            <div className="text-5xl">🎉</div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-1">Congratulations!</h3>
+              <p className="text-gray-600">You've completed all tasks for today!</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -722,342 +1100,7 @@ const ProgressDashboard = () => {
     </div>
   );
 };
-const AIVideoCoach = () => {
-  const [isActive, setIsActive] = useState(false);
-  const [cameraPermission, setCameraPermission] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState('');
-  const [sessionStats, setSessionStats] = useState({
-    duration: 0,
-    encouragements: 0,
-    corrections: 0,
-    accuracy: 0
-  });
-  const [detections, setDetections] = useState({
-    handPosition: 'center',
-    eyeContact: true,
-    posture: 'good',
-    speechClarity: 'clear'
-  });
-  const videoRef = React.useRef(null);
-  const [stream, setStream] = useState(null);
-
-  // Simulated AI feedback messages
-  const encouragementMessages = [
-    "🌟 Great job! You're doing amazing!",
-    "👏 Excellent focus! Keep it up!",
-    "💪 You're making wonderful progress!",
-    "🎯 Perfect! Your coordination is improving!",
-    "✨ Fantastic effort! I'm proud of you!",
-    "🏆 Outstanding work! You're a star!",
-    "🎨 Beautiful hand movements!",
-    "😊 Your speech is getting clearer!"
-  ];
-
-  const guidanceMessages = [
-    "👀 Try to look at the screen, you're doing great!",
-    "✋ Slow down a bit, take your time!",
-    "🗣️ Speak a little louder, I want to hear your wonderful voice!",
-    "🎯 Great attempt! Let's try that again together!",
-    "💡 Remember to breathe and relax!",
-    "🌈 You're almost there, keep going!"
-  ];
-
-  const startSession = async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-      
-      setStream(mediaStream);
-      setCameraPermission(true);
-      setIsActive(true);
-      
-      // Start AI monitoring simulation
-      startAIMonitoring();
-    } catch (error) {
-      alert('❌ Camera access denied. Please allow camera and microphone permissions.');
-      console.error('Camera error:', error);
-    }
-  };
-
-  const stopSession = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    setIsActive(false);
-    setStream(null);
-  };
-
-  const startAIMonitoring = () => {
-    // Simulate AI detection updates every 3 seconds
-    const detectionInterval = setInterval(() => {
-      if (!isActive) {
-        clearInterval(detectionInterval);
-        return;
-      }
-
-      // Simulate random detections
-      const randomDetections = {
-        handPosition: ['center', 'left', 'right', 'raised'][Math.floor(Math.random() * 4)],
-        eyeContact: Math.random() > 0.3,
-        posture: Math.random() > 0.2 ? 'good' : 'slouching',
-        speechClarity: ['clear', 'mumbled', 'excellent'][Math.floor(Math.random() * 3)]
-      };
-
-      setDetections(randomDetections);
-
-      // Generate appropriate feedback
-      if (randomDetections.eyeContact && randomDetections.posture === 'good') {
-        const msg = encouragementMessages[Math.floor(Math.random() * encouragementMessages.length)];
-        setCurrentFeedback(msg);
-        setSessionStats(prev => ({ ...prev, encouragements: prev.encouragements + 1 }));
-      } else {
-        const msg = guidanceMessages[Math.floor(Math.random() * guidanceMessages.length)];
-        setCurrentFeedback(msg);
-        setSessionStats(prev => ({ ...prev, corrections: prev.corrections + 1 }));
-      }
-
-      // Update session duration
-      setSessionStats(prev => ({ 
-        ...prev, 
-        duration: prev.duration + 3,
-        accuracy: Math.min(95, prev.accuracy + Math.random() * 5)
-      }));
-    }, 3000);
-
-    // Initial welcome message
-    setCurrentFeedback("👋 Hello! I'm your AI Coach. I'm here to help and encourage you!");
-  };
-
-  React.useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [stream]);
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900">AI Video Coach</h2>
-        <p className="text-gray-600 mt-1">Real-time monitoring with intelligent guidance and encouragement</p>
-      </div>
-
-      {!isActive ? (
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-12 text-center shadow-xl border border-emerald-100">
-          <div className="w-32 h-32 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-6xl mx-auto mb-6 shadow-lg">
-            🎥
-          </div>
-          <h3 className="text-3xl font-bold text-gray-900 mb-4">Start Your AI Coaching Session</h3>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Our AI coach will monitor your activities through video and provide real-time encouragement, 
-            guidance for hand-eye coordination, speech clarity, and posture.
-          </p>
-          
-          <div className="grid md:grid-cols-3 gap-6 mb-8 max-w-3xl mx-auto">
-            <div className="bg-white rounded-2xl p-6 shadow-md">
-              <div className="text-4xl mb-3">👁️</div>
-              <div className="font-bold text-gray-900 mb-2">Eye Tracking</div>
-              <div className="text-sm text-gray-600">Monitor focus and attention</div>
-            </div>
-            <div className="bg-white rounded-2xl p-6 shadow-md">
-              <div className="text-4xl mb-3">✋</div>
-              <div className="font-bold text-gray-900 mb-2">Hand Coordination</div>
-              <div className="text-sm text-gray-600">Track hand movements</div>
-            </div>
-            <div className="bg-white rounded-2xl p-6 shadow-md">
-              <div className="text-4xl mb-3">🗣️</div>
-              <div className="font-bold text-gray-900 mb-2">Voice Analysis</div>
-              <div className="text-sm text-gray-600">Monitor speech clarity</div>
-            </div>
-          </div>
-          
-          <button
-            onClick={startSession}
-            className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-12 py-5 rounded-2xl text-xl font-bold hover:shadow-2xl transition-all hover:scale-110 inline-flex items-center gap-3"
-          >
-            <Play className="w-6 h-6" />
-            Start AI Coaching
-          </button>
-          
-          <p className="text-sm text-gray-500 mt-6">
-            🔒 Your privacy is protected. Video is processed locally and never stored.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Live Video Feed */}
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-6 shadow-xl border border-emerald-100">
-            <div className="relative">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-96 object-cover rounded-2xl bg-gray-900 shadow-lg"
-              />
-              
-              {/* Live Indicator */}
-              <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 shadow-lg animate-pulse">
-                <div className="w-3 h-3 bg-white rounded-full"></div>
-                LIVE
-              </div>
-              
-              {/* Session Timer */}
-              <div className="absolute top-4 right-4 bg-white bg-opacity-90 backdrop-blur-sm px-4 py-2 rounded-full font-bold text-gray-900 shadow-lg">
-                ⏱️ {Math.floor(sessionStats.duration / 60)}:{(sessionStats.duration % 60).toString().padStart(2, '0')}
-              </div>
-              
-              {/* AI Feedback Overlay */}
-              <div className="absolute bottom-4 left-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-6 rounded-2xl shadow-2xl backdrop-blur-sm bg-opacity-95">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center flex-shrink-0 text-2xl">
-                    🤖
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-lg mb-1">AI Coach Says:</div>
-                    <div className="text-xl">{currentFeedback}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Real-time Detection Stats */}
-          <div className="grid md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-bold text-gray-900">Hand Position</div>
-                <div className="text-2xl">✋</div>
-              </div>
-              <div className={`text-lg font-semibold ${
-                detections.handPosition === 'center' ? 'text-green-600' : 'text-yellow-600'
-              }`}>
-                {detections.handPosition.toUpperCase()}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-bold text-gray-900">Eye Contact</div>
-                <div className="text-2xl">👁️</div>
-              </div>
-              <div className={`text-lg font-semibold ${
-                detections.eyeContact ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {detections.eyeContact ? 'GOOD' : 'NEEDS FOCUS'}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-bold text-gray-900">Posture</div>
-                <div className="text-2xl">🧍</div>
-              </div>
-              <div className={`text-lg font-semibold ${
-                detections.posture === 'good' ? 'text-green-600' : 'text-yellow-600'
-              }`}>
-                {detections.posture.toUpperCase()}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-bold text-gray-900">Speech</div>
-                <div className="text-2xl">🗣️</div>
-              </div>
-              <div className={`text-lg font-semibold ${
-                detections.speechClarity === 'excellent' ? 'text-green-600' : 
-                detections.speechClarity === 'clear' ? 'text-blue-600' : 'text-yellow-600'
-              }`}>
-                {detections.speechClarity.toUpperCase()}
-              </div>
-            </div>
-          </div>
-
-          {/* Session Statistics */}
-          <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Session Statistics</h3>
-            <div className="grid md:grid-cols-4 gap-6">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-emerald-600 mb-2">
-                  {sessionStats.encouragements}
-                </div>
-                <div className="text-gray-600 font-medium">Encouragements</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600 mb-2">
-                  {sessionStats.corrections}
-                </div>
-                <div className="text-gray-600 font-medium">Guidance Given</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-purple-600 mb-2">
-                  {Math.floor(sessionStats.accuracy)}%
-                </div>
-                <div className="text-gray-600 font-medium">Accuracy</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-orange-600 mb-2">
-                  {Math.floor(sessionStats.duration / 60)}m
-                </div>
-                <div className="text-gray-600 font-medium">Duration</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Control Buttons */}
-          <div className="flex gap-4">
-            <button
-              onClick={stopSession}
-              className="flex-1 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-2xl py-4 font-bold hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
-            >
-              <X className="w-6 h-6" />
-              End Session
-            </button>
-            <button
-              className="flex-1 bg-white border-2 border-emerald-500 text-emerald-600 rounded-2xl py-4 font-bold hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
-            >
-              <Target className="w-6 h-6" />
-              Pause & Review
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Features List */}
-      {!isActive && (
-        <div className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">What AI Coach Monitors:</h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            {[
-              { icon: '👁️', title: 'Eye Tracking & Focus', desc: 'Monitors attention span and screen engagement' },
-              { icon: '✋', title: 'Hand-Eye Coordination', desc: 'Tracks hand movements and coordination accuracy' },
-              { icon: '🗣️', title: 'Speech Clarity', desc: 'Analyzes pronunciation and speech patterns' },
-              { icon: '🧍', title: 'Posture Monitoring', desc: 'Ensures healthy sitting position' },
-              { icon: '💪', title: 'Gesture Recognition', desc: 'Detects and guides correct movements' },
-              { icon: '🎯', title: 'Task Completion', desc: 'Tracks progress and provides real-time feedback' },
-            ].map((feature, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl">
-                <div className="text-3xl">{feature.icon}</div>
-                <div>
-                  <div className="font-bold text-gray-900 mb-1">{feature.title}</div>
-                  <div className="text-sm text-gray-600">{feature.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+// AIVideoCoach is now imported from separate component
 
 // ============================================
 // MAIN APP COMPONENT
@@ -1066,6 +1109,30 @@ const BrightPathApp = () => {
   const [activeSection, setActiveSection] = useState('home');
   const [activeFeature, setActiveFeature] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  
+  // Check for existing session on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
+      setIsAuthenticated(true);
+    }
+  }, []);
+  
+  const handleLogin = (user) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    setActiveSection('home');
+    setActiveFeature(null);
+  };
   
   const categories = [
     { id: 'games', name: 'Games', icon: Gamepad2, color: 'from-violet-500 to-purple-600', desc: 'Interactive learning games' },
@@ -1130,7 +1197,15 @@ const BrightPathApp = () => {
               <Play className="w-5 h-5" />
               Start Free Trial
             </button>
-            <button className="bg-white bg-opacity-20 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-opacity-30 transition-all border-2 border-white border-opacity-40 flex items-center gap-2">
+            <button 
+              onClick={() => {
+                const consultation = FeatureRegistry.getAll('support').find(f => f.id === 'video-consultation');
+                if (consultation) {
+                  setActiveFeature(consultation);
+                }
+              }}
+              className="bg-white bg-opacity-20 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-opacity-30 transition-all border-2 border-white border-opacity-40 flex items-center gap-2"
+            >
               <Phone className="w-5 h-5" />
               Book Consultation
             </button>
@@ -1438,6 +1513,11 @@ const BrightPathApp = () => {
     );
   };
   
+  // Show auth page if not logged in
+  if (!isAuthenticated) {
+    return <Auth onLoginSuccess={handleLogin} />;
+  }
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       {/* Professional Header */}
@@ -1479,10 +1559,19 @@ const BrightPathApp = () => {
                   3
                 </span>
               </button>
-              <button className="hidden md:flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all hover:scale-105">
-                <User className="w-5 h-5" />
-                My Account
+              <div className="hidden md:flex items-center gap-3">
+                <button className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-xl font-semibold hover:shadow-lg transition-all">
+                  <User className="w-4 h-4" />
+                  {currentUser?.name || 'Account'}
               </button>
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 bg-gray-200 hover:bg-red-500 text-gray-700 hover:text-white px-4 py-2 rounded-xl font-semibold transition-all"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 hover:bg-gray-100 rounded-xl transition-all"
