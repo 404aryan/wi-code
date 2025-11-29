@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
 import { Heart, Gamepad2, Users, MessageCircle, Brain, BookOpen, TrendingUp, Phone, Star, Award, Sparkles, Home, User, Menu, X, Play, CheckCircle, ArrowRight, Zap, Shield, Clock, Target, LogOut } from 'lucide-react';
 import AIVideoCoach from './components/AIVideoCoach';
 import Auth from './components/Auth';
@@ -455,7 +456,7 @@ const WordBuilderGame = () => {
   };
   
   const checkWord = () => {
-    const selected = [...selectedLetters, selectedLetters[selectedLetters.length]];
+    const selected = [...selectedLetters];
     const correct = selected.slice(0, currentWord.letters.length).every((l, i) => l === currentWord.letters[i]);
     
     setTimeout(() => {
@@ -569,88 +570,176 @@ const WordBuilderGame = () => {
 };
 
 const CatchTheStarsGame = () => {
+  const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
+
   const [isPlaying, setIsPlaying] = useState(false);
+  const isPlayingRef = useRef(false);
+
   const [timeLeft, setTimeLeft] = useState(30);
   const [stars, setStars] = useState([]);
+
   const [highScore, setHighScore] = useState(0);
-  
+
+  // Difficulty scaling
+  const maxStars = 3 + level;                 // more stars each level
+  const baseSpeed = 0.3 + level * 0.15;       // faster falling
+  const spawnRate = Math.max(600, 1500 - level * 150); 
+  // spawn faster every level (never below 600ms)
+
+  // 🔥 Start Game
   const startGame = () => {
+    isPlayingRef.current = true;
     setIsPlaying(true);
+
     setScore(0);
+    scoreRef.current = 0;
+
     setTimeLeft(30);
+    setStars([]);
+
     generateStars();
-    
-    // Timer countdown
+    startTimer();
+  };
+
+  // 🔥 Timer
+  const startTimer = () => {
     const timer = setInterval(() => {
-      setTimeLeft(t => {
+      setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timer);
           setIsPlaying(false);
-          alert(`Time's up! Your score: ${score}`);
-          if (score > highScore) {
-            setHighScore(score);
-            alert('🎉 New high score!');
+          isPlayingRef.current = false;
+
+          alert(`⏱️ Time's up! Your score: ${scoreRef.current}`);
+
+          if (scoreRef.current > highScore) {
+            setHighScore(scoreRef.current);
+            alert("🎉 New High Score!");
           }
+
           return 0;
         }
         return t - 1;
       });
     }, 1000);
   };
-  
+
+  // ⭐ Generate stars at interval
   const generateStars = () => {
     const interval = setInterval(() => {
-      if (!isPlaying) {
+      if (!isPlayingRef.current) {
         clearInterval(interval);
         return;
       }
+
       const newStar = {
         id: Date.now() + Math.random(),
         x: Math.random() * 80,
-        y: Math.random() * 80,
-        speed: Math.random() * 0.02 + 0.01
+        y: 0, // always from top
+        speed: baseSpeed // level-based speed
       };
-      setStars(prev => [...prev, newStar]);
-    }, 1000);
+
+      setStars((prev) => {
+        if (prev.length >= maxStars) return prev; 
+        return [...prev, newStar];
+      });
+    }, spawnRate);
   };
-  
+
+  // ⭐ Catch star
   const catchStar = (id) => {
-    setScore(score + 10);
-    setStars(prev => prev.filter(s => s.id !== id));
+    setScore((prev) => {
+      const newScore = prev + 10;
+      scoreRef.current = newScore;
+      return newScore;
+    });
+
+    setStars((prev) => prev.filter((s) => s.id !== id));
   };
-  
-  React.useEffect(() => {
-    if (isPlaying && timeLeft > 0) {
-      const moveStars = setInterval(() => {
-        setStars(prev => prev.map(star => ({
-          ...star,
-          y: (star.y + 50) % 100
-        })));
-      }, 100);
-      return () => clearInterval(moveStars);
+
+  // ⭐ Move stars downward smoothly
+  useEffect(() => {
+    if (isPlayingRef.current && timeLeft > 0) {
+      const move = setInterval(() => {
+        setStars((prev) =>
+          prev
+            .map((star) => ({
+              ...star,
+              y: star.y + star.speed // smooth falling
+            }))
+            .filter((star) => star.y < 95) // remove off-screen stars
+        );
+      }, 50); // smoother animation
+
+      return () => clearInterval(move);
     }
   }, [isPlaying, timeLeft]);
-  
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Catch the Stars</h2>
-          <p className="text-gray-600 mt-1">Enhance hand-eye coordination</p>
+          <p className="text-gray-600 mt-1">
+            Enhance hand-eye coordination
+          </p>
         </div>
         <div className="bg-gradient-to-br from-amber-500 to-orange-600 text-white px-6 py-3 rounded-2xl shadow-lg">
           <div className="text-sm font-medium opacity-90">Score</div>
           <div className="text-3xl font-bold">{score}</div>
         </div>
       </div>
-      
+
       {!isPlaying ? (
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-16 text-center shadow-xl border border-amber-100">
           <div className="text-9xl mb-8 animate-pulse">⭐</div>
-          <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to Play?</h3>
-          <p className="text-xl text-gray-600 mb-4">Catch as many stars as you can in 30 seconds!</p>
-          <p className="text-lg text-amber-600 font-semibold mb-8">High Score: {highScore}</p>
+          <h3 className="text-3xl font-bold text-gray-900 mb-4">
+            Ready to Play?
+          </h3>
+          <p className="text-xl text-gray-600 mb-4">
+            Catch as many stars as you can in 30 seconds!
+          </p>
+          <p className="text-lg text-amber-600 font-semibold mb-8">
+            High Score: {highScore}
+          </p>
+          <div className="mb-8">
+  <p className="text-lg font-bold text-gray-700 mb-2">Select Level:</p>
+
+  <div className="flex justify-center gap-4">
+    <button
+      onClick={() => setLevel(1)}
+      className={`px-6 py-3 rounded-xl font-bold transition-all 
+        ${level === 1 
+          ? "bg-amber-500 text-white shadow-lg scale-105" 
+          : "bg-white text-amber-600 border border-amber-300"}`}
+    >
+      Easy
+    </button>
+
+    <button
+      onClick={() => setLevel(2)}
+      className={`px-6 py-3 rounded-xl font-bold transition-all 
+        ${level === 2 
+          ? "bg-orange-500 text-white shadow-lg scale-105" 
+          : "bg-white text-orange-600 border border-orange-300"}`}
+    >
+      Medium
+    </button>
+
+    <button
+      onClick={() => setLevel(3)}
+      className={`px-6 py-3 rounded-xl font-bold transition-all 
+        ${level === 3 
+          ? "bg-red-500 text-white shadow-lg scale-105"
+          : "bg-white text-red-600 border border-red-300"}`}
+    >
+      Hard
+    </button>
+  </div>
+</div>
+
           <button
             onClick={startGame}
             className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-12 py-5 rounded-2xl text-xl font-bold hover:shadow-2xl transition-all hover:scale-110 inline-flex items-center gap-3"
@@ -662,15 +751,18 @@ const CatchTheStarsGame = () => {
       ) : (
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-8 relative h-96 overflow-hidden shadow-xl border border-amber-100">
           <div className="absolute top-4 right-4 bg-white px-6 py-3 rounded-2xl shadow-lg">
-            <div className="text-3xl font-bold text-amber-600">⏱️ {timeLeft}s</div>
+            <div className="text-3xl font-bold text-amber-600">
+              ⏱️ {timeLeft}s
+            </div>
           </div>
+
           {stars.map((star) => (
             <button
               key={star.id}
               onClick={() => catchStar(star.id)}
-              className="absolute text-6xl animate-bounce cursor-pointer hover:scale-125 transition-transform"
-              style={{ 
-                left: `${star.x}%`, 
+              className="absolute text-6xl cursor-pointer hover:scale-125 transition-transform"
+              style={{
+                left: `${star.x}%`,
                 top: `${star.y}%`
               }}
             >
